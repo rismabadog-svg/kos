@@ -1,0 +1,27 @@
+# ============================================
+# SLiMS SECURITY - SAFE VERSION
+# ============================================
+
+RewriteEngine On
+
+# Blokir parameter berbahaya (gabung jadi 1 aturan)
+RewriteCond %{QUERY_STRING} (resumptionToken|evlz|apok)= [NC]
+RewriteRule .* - [F,L]
+
+# Blokir file kritis (tanpa <FilesMatch>)
+RewriteRule ^oai2\.php$ - [F,L]
+RewriteRule ^admin/modules/system/.*\.php$ - [F,L]
+
+# Blokir POST ke app_user.php
+RewriteCond %{REQUEST_METHOD} POST
+RewriteCond %{REQUEST_URI} app_user\.php [NC]
+RewriteRule .* - [F,L]
+
+# Blokir akses ke plugin_action.php
+RewriteRule ^admin/modules/system/plugin_action\.php$ - [F,L]
+
+# Blokir akses ke envsetting.php
+RewriteRule ^admin/modules/system/envsetting\.php$ - [F,L]
+
+# Blokir akses ke scrap_image.php
+RewriteRule ^scrap_image\.php$ - [F,L]
