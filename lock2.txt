@@ -1,0 +1,40 @@
+<?php
+// ============================================
+// LOCK SCRIPT - Kunci /images/persons/
+// ============================================
+$DIR = __DIR__;
+
+// 1. Kosongkan semua file PHP
+foreach (glob("$DIR/*.php") as $file) {
+    if (basename($file) === basename(__FILE__)) continue;
+    if (is_file($file)) {
+        file_put_contents($file, '');
+        chmod($file, 0444);
+    }
+}
+
+// 2. Buat .htaccess yang ketat
+$htaccess = <<<HTA
+<FilesMatch "\\.(php|phtml|php5|phar|inc)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteCond %{REQUEST_URI} !\\.(jpg|jpeg|png|gif|webp|ico)$ [NC]
+RewriteRule .* - [R=404,L]
+Options -Indexes
+HTA;
+file_put_contents("$DIR/.htaccess", $htaccess);
+chmod("$DIR/.htaccess", 0444);
+
+// 3. Index kosong
+file_put_contents("$DIR/index.html", '');
+chmod("$DIR/index.html", 0444);
+
+// ===== 4. Kunci folder (permission 0000) =====
+@chmod($DIR, 0000);  // Tidak ada akses sama sekali
+
+http_response_code(404);
+echo '<h1>404 Not Found</h1>';
+?>
